@@ -1,0 +1,60 @@
+body {
+    margin: 0;
+}
+
+#CANVAS, #GRID {
+    position: fixed;
+    right: 0;
+}
+
+#TOOL_BAR {
+    text-align: center;
+    position: fixed;
+    left: 0;
+    width: 20vw;
+    height: 100vh;
+}
+
+.tool {
+    margin: 1rem;
+    height: 4rem;
+    width: 4rem;
+    line-height: 4rem;
+    border-radius: 50%;
+    border: 1rem solid #fff;
+    background: #009688;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+}
+
+.use {
+    border-style: double;
+}
+
+
+.selector {
+    width: 6rem;
+    height: 0.5rem;
+    margin: 1rem;
+    background-color: black;
+}
+
+.slider {
+    border-radius: 50%;
+    width: 1rem;
+    height: 1rem;
+    background-color: #000;
+    color: #fff;
+    position: relative;
+    bottom: 0.5rem;
+    line-height: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+#COLOR_DISPLAY {
+    width: 6rem;
+    margin: 1rem;
+    height: 1rem;
+}

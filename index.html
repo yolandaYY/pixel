@@ -1,0 +1,36 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>🎈 pixel</title>
+    <link href="./index.css" type="text/css" rel="stylesheet">
+    <script src="./index.js" type="text/javaScript" defer></script>
+</head>
+
+<body>
+    <div id="TOOL_BAR">
+        <div id="PEN" class="tool use">画笔</div>
+        <div id="ERASE" class="tool">橡皮擦</div>
+        <div id="UNDO" class="tool">撤回</div>
+        <div id="REDO" class="tool">前进</div>
+        <div id="TOGGLE_GRID" class="tool">网格</div>
+        <div id="COLOR_SELECTOR">
+            <div id="COLOR_DISPLAY"></div>
+            <div id="R" class="selector">
+                <div class="slider" draggable="false">R</div>
+            </div>
+            <div id="G" class="selector">
+                <div class="slider" draggable="false">G</div>
+            </div>
+            <div id="B" class="selector">
+                <div class="slider" draggable="false">B</div>
+            </div>
+        </div>
+    </div>
+    <canvas id="CANVAS">你的浏览器不支持 canvas</canvas>
+    <canvas id="GRID">你的浏览器不支持 canvas</canvas>
+</body>
+
+</html>
