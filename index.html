@@ -10,12 +10,20 @@
 </head>
 
 <body>
+    <canvas id="GRID">你的浏览器不支持 canvas</canvas>
+    <canvas id="CANVAS">你的浏览器不支持 canvas</canvas>
     <div id="TOOL_BAR">
-        <div id="PEN" class="tool use">画笔</div>
-        <div id="ERASE" class="tool">橡皮擦</div>
-        <div id="UNDO" class="tool">撤回</div>
-        <div id="REDO" class="tool">前进</div>
-        <div id="TOGGLE_GRID" class="tool">网格</div>
+        <div id="PEN" class="tool use" data-tool-type="PEN-SELECT">画笔</div>
+        <div id="ERASE" class="tool" data-tool-type="ERASE-SELECT">橡皮擦</div>
+        <div id="FILL" class="tool" data-tool-type="FILL-SELECT">填充</div>
+        <div id="UNDO" class="tool" data-tool-type="UNDO-CLICK">撤回</div>
+        <div id="REDO" class="tool" data-tool-type="REDO-CLICK">前进</div>
+        <div id="CLEAR" class="tool" data-tool-type="CLEAR-CLICK">清空</div>
+        <div id="TOGGLE_GRID" class="tool">
+            <label>
+                <input type="checkbox" data-tool-type="TOGGLE_GRID-CLICK" />显示网格
+            </label>
+        </div>
         <div id="COLOR_SELECTOR">
             <div id="COLOR_DISPLAY"></div>
             <div id="R" class="selector">
@@ -29,8 +37,6 @@
             </div>
         </div>
     </div>
-    <canvas id="CANVAS">你的浏览器不支持 canvas</canvas>
-    <canvas id="GRID">你的浏览器不支持 canvas</canvas>
 </body>
 
 </html>

@@ -1,3 +1,5 @@
+'use strict'
+
 // 工具函数
 
 function drawLineToContext(context, sx, sy, ex, ey) {
@@ -14,6 +16,11 @@ function newTwoDimensionalArray(x, y) {
         arr.push(new Array(y));
     }
     return arr;
+}
+
+// [,)
+function isInRange(num, notLess, lessThen) {
+    return num >= notLess && num < lessThen;
 }
 
 function getRGBArray(rgbStr) {
@@ -75,17 +82,15 @@ __SLIDER.addSliderListener = function () {
 
 // 工具对象
 const __TOOL = {};
-__TOOL.initTool = function ({ penElement, eraseElement, colorSelector, inUse, color }) {
-    this.penElement = penElement;
-    this.eraseElement = eraseElement;
+__TOOL.initTool = function ({ toolBarElement, toggleGridElement, colorSelector, inUse, color, changeToolCallback }) {
+
+    this.toolBarElement = toolBarElement;
+    this.toggleGridElement = toggleGridElement;
     this.colorSelector = colorSelector;
 
     this.inUse = inUse;
     this.color = color;
     this.updateColorDisplay();
-
-    this.penElement.onclick = this.selected.bind(this);
-    this.eraseElement.onclick = this.selected.bind(this);
 
     const colors = getRGBArray(color);
     this.sliderR = Object.create(__SLIDER);
@@ -100,11 +105,51 @@ __TOOL.initTool = function ({ penElement, eraseElement, colorSelector, inUse, co
             this.updateColorDisplay();
         });
     });
+
+    this.isDragToolBar = false;
+    this.addMoveToolBarListener(changeToolCallback);
 }
 
-__TOOL.selected = function (e) {
+__TOOL.addMoveToolBarListener = function (changeToolCallback) {
+
+    this.toolBarElement.onmousedown = (e) => {
+        this.isDragToolBar = true;
+    }
+
+    this.toolBarElement.onmousemove = (e) => {
+        if (this.isDragToolBar && e.target == this.toolBarElement) {
+            const { movementX, movementY } = e;
+            const { left, top } = this.toolBarElement.style;
+            this.toolBarElement.style.left = parseInt(left || 0) + movementX + "px";
+            this.toolBarElement.style.top = parseInt(top || 0) + movementY + "px";
+        }
+    }
+
+    this.toolBarElement.onmouseleave = (e) => {
+        this.isDragToolBar = false;
+
+    }
+
+    this.toolBarElement.onmouseup = (e) => {
+        this.isDragToolBar = false;
+    }
+
+    this.toolBarElement.onclick = (e) => {
+        const { target } = e;
+        const { toolType } = target.dataset;
+        if (!toolType) return;
+        const typeArr = toolType.split("-");
+
+        if (typeArr[1] == "SELECT") {
+            this.changeInUse(target);
+        }
+        changeToolCallback(typeArr[0]);
+    }
+}
+
+__TOOL.changeInUse = function (element) {
     this.inUse.className = "tool";
-    this.inUse = e.currentTarget;
+    this.inUse = element;
     this.inUse.className = "tool use";
 }
 
@@ -113,63 +158,99 @@ __TOOL.updateColorDisplay = function () {
 }
 
 
-
 // 画布对象
 const __CANVAS = Object.create(__TOOL);
 
 __CANVAS.initCanvas = function (args) {
-    this.initTool(args);
+    this.initTool({ ...args, changeToolCallback: this.changeToolCallback.bind(this) });
 
-    const { canvasElement, gridElement, imageResolution = { x: 50, y: 50 } } = args;
+    const { canvasElement, gridElement, imageResolution, isGridDisplayed } = args;
 
     this.canvasElement = canvasElement;
     this.gridElement = gridElement;
 
     this.canvasContext = canvasElement.getContext("2d");
     this.gridContext = gridElement.getContext("2d");
-    this.pixelContext = newTwoDimensionalArray(imageResolution.x, imageResolution.y);
 
     // 限制大小 1000
     this.historyStack = [];
     this.undoStack = [];
 
-    this.imageResolution = imageResolution;
+    this.setImageResolution(imageResolution);
 
-    this.gridSize = this.getGridSize();
-    this.offsetX = window.innerWidth - canvasElement.width;
-    this.offsetY = window.innerHeight - canvasElement.height;
+    if (isGridDisplayed) {
+        this.toggleGridElement.getElementsByTagName("input")[0].checked = true;
+        this.drawGrid();
+    }
+
+    this.mousedrag = false;
+    this.addMouseListener();
+
+    this.inUse.click();
 }
 
 __CANVAS.getGridSize = function () {
-    return Math.min(Math.floor(this.canvasElement.width / this.imageResolution.x,
-        Math.floor(this.canvasElement.height / this.imageResolution.y)));
+    return Math.min(Math.floor(this.canvasElement.width / this.imageResolution.col),
+        Math.floor(this.canvasElement.height / this.imageResolution.row));
 }
 
 __CANVAS.setImageResolution = function (imageResolution) {
     this.imageResolution = imageResolution;
-    this.pixelContext = newTwoDimensionalArray(imageResolution.x, imageResolution.y);
+    this.pixelContext = newTwoDimensionalArray(imageResolution.row, imageResolution.col);
     this.gridSize = this.getGridSize();
+    this.canvasWidth = imageResolution.col * this.gridSize;
+    this.canvasHeight = imageResolution.row * this.gridSize;
+    this.offsetX = Math.floor((this.canvasElement.width - this.canvasWidth) / 2);
+    this.offsetY = Math.floor((this.canvasElement.height - this.canvasHeight) / 2);
 }
 
 __CANVAS.drawGrid = function () {
-    const endX = this.offsetX + this.imageResolution.x * this.gridSize;
-    const endY = this.offsetY + this.imageResolution.y * this.gridSize;
-    for (let i = 0; i <= this.imageResolution.x; ++i) {
-        drawLineToContext(this.gridContext, this.gridSize * i, 0, this.gridSize * i, endX);
-    }
-    for (let i = 0; i <= this.imageResolution.y; ++i) {
-        drawLineToContext(this.gridContext, 0, this.gridSize * i, endY, this.gridSize * i);
+    this.gridContext.fillStyle = "#000";
+    this.gridContext.fillRect(0, 0, this.gridElement.width, this.gridElement.height);
+
+    this.gridContext.fillStyle = "#fff";
+    this.gridContext.fillRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
+
+    this.gridContext.fillStyle = "#ccc";
+    for (let i = 0; i < this.imageResolution.row; i++) {
+        for (let j = (i & 1); j < this.imageResolution.col; j += 2) {
+            this.gridContext.fillRect(this.offsetX + this.gridSize * j, this.offsetY + this.gridSize * i, this.gridSize, this.gridSize);
+        }
     }
 }
 
-__CANVAS.eraseGrid = function () {
-    this.gridContext.clearRect(0, 0, this.gridElement.width, this.gridElement.height);
+__CANVAS.removeGrid = function () {
+    this.gridContext.clearRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
+}
+
+
+__CANVAS.changeToolCallback = function (id) {
+
+    switch (id) {
+        case 'PEN':
+            this.canvasElement.style.cursor = "crosshair";
+            break;
+        case 'ERASE':
+            this.canvasElement.style.cursor = "help";
+            break;
+        case 'TOGGLE_GRID':
+            this.toggleGridDisplay();
+            break;
+        case 'UNDO':
+            this.onUndo();
+            break;
+        case 'REDO':
+            this.onRedo();
+            break;
+        case 'CLEAR':
+            this.clearCanvas();
+        case 'FILL':
+            this.canvasElement.style.cursor = "cell";
+    }
 }
 
 __CANVAS.isInCanvas = function (x, y) {
-    const endX = this.offsetX + this.imageResolution.x * this.gridSize;
-    const endY = this.offsetY + this.imageResolution.y * this.gridSize;
-    if (x < this.offsetX || x >= endX || y < this.offsetY || y >= endY) {
+    if (x < this.offsetX || x >= this.canvasWidth + this.offsetX || y < this.offsetY || y >= this.canvasHeight + this.offsetY) {
         return false;
     }
     return true;
@@ -178,28 +259,71 @@ __CANVAS.isInCanvas = function (x, y) {
 __CANVAS.tranformCoordinateToCanvas = function (x, y) {
     var col = Math.floor((x - this.offsetX) / this.gridSize);
     var row = Math.floor((y - this.offsetY) / this.gridSize);
-    return { x: col * this.gridSize, y: row * this.gridSize };
+    return { row, col };
 }
 
-__CANVAS.setPixelContext = function (pos, color) {
-    this.pixelContext[Math.floor(pos.x / this.gridSize)][Math.floor(pos.y / this.gridSize)] = color;
+__CANVAS.setPixelContext = function ({ row, col }, color) {
+    this.pixelContext[row][col] = color;
 }
 
-__CANVAS.getPixelContext = function (pos) {
-    return this.pixelContext[Math.floor(pos.x / this.gridSize)][Math.floor(pos.y / this.gridSize)];
+__CANVAS.getPixelContext = function ({ row, col }) {
+    return this.pixelContext[row][col];
 }
 
 __CANVAS.usePen = function (pos, _color) {
     const color = _color || this.color;
     this.setPixelContext(pos, color);
-
     this.canvasContext.fillStyle = color;
-    this.canvasContext.fillRect(pos.x, pos.y, this.gridSize, this.gridSize);
+    this.canvasContext.fillRect(this.offsetX + pos.col * this.gridSize, this.offsetY + pos.row * this.gridSize, this.gridSize, this.gridSize);
 }
 
 __CANVAS.useErase = function (pos) {
     this.setPixelContext(pos, '');
-    this.canvasContext.clearRect(pos.x, pos.y, this.gridSize, this.gridSize);
+    this.canvasContext.clearRect(this.offsetX + pos.col * this.gridSize, this.offsetY + pos.row * this.gridSize, this.gridSize, this.gridSize);
+}
+
+__CANVAS.useFill = function (pos) {
+    const willReplaceColor = this.getPixelContext(pos);
+    if (willReplaceColor == this.color) return;
+
+    const queue = [pos];
+    const visit = newTwoDimensionalArray(this.imageResolution.row, this.imageResolution.col);
+    const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+    while (queue.length) {
+        const pos = queue[0];
+        queue.shift();
+
+        visit[pos.row][pos.col] = true;
+        if (this.getPixelContext(pos) != willReplaceColor) continue;
+
+        this.usePen(pos);
+
+        directions.forEach(dir => {
+            const _row = pos.row + dir[0];
+            const _col = pos.col + dir[1];
+            if (isInRange(_row, 0, this.imageResolution.row)
+                && isInRange(_col, 0, this.imageResolution.col)
+                && !visit[_row][_col]
+                && this.getPixelContext({ row: _row, col: _col }) == willReplaceColor) {
+                queue.push({ row: _row, col: _col });
+            }
+        })
+    }
+}
+
+__CANVAS.clearCanvas = function () {
+    this.historyStack.push({ pixelContext: this.pixelContext, action: "clearCanvas" });
+    this.pixelContext = newTwoDimensionalArray(this.imageResolution.row, this.imageResolution.col);
+    this.canvasContext.clearRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
+}
+
+__CANVAS.drawByPixelContext = function () {
+    this.pixelContext.forEach((rowColor, row) => {
+        rowColor.forEach((color, col) => {
+            this.canvasContext.fillStyle = color;
+            this.canvasContext.fillRect(this.offsetX + col * this.gridSize, this.offsetY + row * this.gridSize, this.gridSize, this.gridSize);
+        })
+    });
 }
 
 __CANVAS.paint = function paint(action) {
@@ -223,36 +347,17 @@ __CANVAS.paint = function paint(action) {
                 this.historyStack.push({ color, pos, action: "useErase" });
             }
             break;
+        case 'FILL':
+            if (this.color != color) {
+                this.useFill(pos);
+            }
         default:
             break;
     }
     return true;
 }
 
-
-// 整体
-const __PIXEL = Object.create(__CANVAS);
-__PIXEL.init = function (args) {
-    this.initCanvas(args);
-
-    const { toggleGridElement, undoElement, redoElement, isGridDisplayed } = args;
-    this.toggleGridElement = toggleGridElement;
-    this.undoElement = undoElement;
-    this.redoElement = redoElement;
-
-    this.undoElement.onclick = this.onUndo.bind(this);
-    this.redoElement.onclick = this.onRedo.bind(this);
-    this.toggleGridElement.onclick = this.toggleGridDisplay.bind(this);
-
-    this.mouseListener = [];
-    this.mousedrag = false;
-    this.isGridDisplayed = isGridDisplayed;
-    isGridDisplayed && this.drawGrid();
-
-    this.addMouseListener();
-}
-
-__PIXEL.onRedo = function (e) {
+__CANVAS.onRedo = function () {
     const { length } = this.undoStack;
     if (length == 0) return;
 
@@ -268,11 +373,13 @@ __PIXEL.onRedo = function (e) {
         case "useErase":
             this.useErase(pos);
             break;
-
+        case "clearCanvas":
+            this.clearCanvas();
+            break;
     }
 }
 
-__PIXEL.onUndo = function (e) {
+__CANVAS.onUndo = function () {
     const { length } = this.historyStack;
     if (length == 0) return;
 
@@ -288,64 +395,73 @@ __PIXEL.onUndo = function (e) {
         case "useErase":
             this.usePen(pos, color);
             break;
+        case "clearCanvas":
+            this.pixelContext = record.pixelContext;
+            this.drawByPixelContext();
+            break;
     }
 }
 
-__PIXEL.toggleGridDisplay = function () {
-    if (this.isGridDisplayed) {
-        this.eraseGrid();
-        this.isGridDisplayed = false;
-    } else {
+__CANVAS.toggleGridDisplay = function () {
+    const checkBox = this.toggleGridElement.getElementsByTagName("input")[0];
+    if (checkBox.checked) {
         this.drawGrid();
-        this.isGridDisplayed = true;
+    } else {
+        this.removeGrid();
     }
 }
 
-
-// 修改为元素的监听事件
-__PIXEL.addMouseListener = function () {
-    this.mouseListener.push(window.addEventListener("mousedown", (e) => {
+__CANVAS.addMouseListener = function () {
+    this.canvasElement.onmousedown = (e) => {
         this.mousedrag = true;
-    }));
+    };
 
-    this.mouseListener.push(window.addEventListener("mousemove", (e) => {
+    this.canvasElement.onclick = (e) => {
+        var { clientX, clientY } = e;
+        this.paint({ x: clientX, y: clientY });
+    }
+
+    this.canvasElement.onmousemove = (e) => {
         if (this.mousedrag) {
             var { clientX, clientY } = e;
             this.paint({ x: clientX, y: clientY });
         }
-    }));
+    };
 
-    this.mouseListener.push(window.addEventListener("mouseup", (e) => {
+    this.canvasElement.onmouseleave = (e) => {
         this.mousedrag = false;
-    }));
-}
+    }
 
-__PIXEL.removeMouseListener = function () {
-    this.mouseListener.forEach(id => window.removeEventListener(id));
+    this.canvasElement.onmouseup = (e) => {
+        this.mousedrag = false;
+    };
 }
 
 
 // 主函数
 function main() {
-    const pixel = Object.create(__PIXEL);
-    CANVAS.width = GRID.width = Math.floor(window.innerWidth * 0.8);
+    const pixel = Object.create(__CANVAS);
+    CANVAS.width = GRID.width = window.innerWidth;
     CANVAS.height = GRID.height = window.innerHeight;
-    pixel.init({
+    pixel.initCanvas({
         canvasElement: CANVAS,
         gridElement: GRID,
+        toolBarElement: TOOL_BAR,
         toggleGridElement: TOGGLE_GRID,
-        penElement: PEN,
-        eraseElement: ERASE,
-        redoElement: REDO,
-        undoElement: UNDO,
         inUse: PEN,
         color: "rgb(0,123,255)",
         colorSelector: {
             sliderR: R, sliderG: G, sliderB: B, colorDisplayElement: COLOR_DISPLAY,
         },
         isGridDisplayed: true,
-        imageResolution: { x: 50, y: 50 }
+        imageResolution: { row: 40, col: 60 }
     });
 }
 
 main();
+
+// 实现填充(todo: undo、redo)
+// 修改颜色
+// 修改颜色转换
+// resize??
+// 按钮防抖
