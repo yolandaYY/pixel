@@ -278,7 +278,7 @@ __CANVAS.usePen = function (pos, _color) {
 }
 
 __CANVAS.useErase = function (pos) {
-    this.setPixelContext(pos, '');
+    this.setPixelContext(pos, undefined);
     this.canvasContext.clearRect(this.offsetX + pos.col * this.gridSize, this.offsetY + pos.row * this.gridSize, this.gridSize, this.gridSize);
 }
 
@@ -288,15 +288,17 @@ __CANVAS.useFill = function (pos) {
 
     const queue = [pos];
     const visit = newTwoDimensionalArray(this.imageResolution.row, this.imageResolution.col);
+
     const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
     while (queue.length) {
         const pos = queue[0];
         queue.shift();
 
-        visit[pos.row][pos.col] = true;
         if (this.getPixelContext(pos) != willReplaceColor) continue;
 
         this.usePen(pos);
+        visit[pos.row][pos.col] = true;
 
         directions.forEach(dir => {
             const _row = pos.row + dir[0];
@@ -309,6 +311,7 @@ __CANVAS.useFill = function (pos) {
             }
         })
     }
+    return visit;
 }
 
 __CANVAS.clearCanvas = function () {
@@ -332,25 +335,27 @@ __CANVAS.paint = function paint(action) {
     const pos = this.tranformCoordinateToCanvas(x, y);
     const color = this.getPixelContext(pos);
 
-    this.undoStack.length = 0;
-
     switch (this.inUse.id) {
         case "PEN":
             if (this.color != color) {
                 this.usePen(pos);
-                this.historyStack.push({ color: this.color, pos, action: "usePen" });
+                this.historyStack.push({ willReplaceColor: color, paintColor: this.color, pos, action: "usePen" });
+                this.undoStack.length = 0;
             }
             break;
         case "ERASE":
             if (color) {
                 this.useErase(pos);
-                this.historyStack.push({ color, pos, action: "useErase" });
+                this.historyStack.push({ willReplaceColor: color, pos, action: "useErase" });
+                this.undoStack.length = 0;
             }
             break;
         case 'FILL':
             if (this.color != color) {
-                this.useFill(pos);
+                this.historyStack.push({ willReplaceColor: color, paintColor: this.color, fillPixelContent: this.useFill(pos), action: "useFill" });
+                this.undoStack.length = 0;
             }
+            break;
         default:
             break;
     }
@@ -362,19 +367,26 @@ __CANVAS.onRedo = function () {
     if (length == 0) return;
 
     const record = this.undoStack[length - 1];
-    const { action, pos, color } = record;
+    const { action, pos, paintColor } = record;
     this.historyStack.push(record);
     this.undoStack.pop();
 
     switch (action) {
         case "usePen":
-            this.usePen(pos, color);
+            this.usePen(pos, paintColor);
             break;
         case "useErase":
             this.useErase(pos);
             break;
         case "clearCanvas":
             this.clearCanvas();
+            break;
+        case "useFill":
+            record.fillPixelContent.forEach((fillContent, row) => {
+                fillContent.forEach((isPaint, col) => {
+                    isPaint && this.usePen({ row, col }, paintColor);
+                });
+            });
             break;
     }
 }
@@ -387,17 +399,26 @@ __CANVAS.onUndo = function () {
     this.undoStack.push(record);
     this.historyStack.pop();
 
-    const { action, pos, color } = record;
+    const { action, pos, willReplaceColor } = record;
     switch (action) {
         case "usePen":
-            this.useErase(pos);
+            willReplaceColor ? this.usePen(pos, willReplaceColor) : this.useErase(pos);
             break;
         case "useErase":
-            this.usePen(pos, color);
+            this.usePen(pos, willReplaceColor);
             break;
         case "clearCanvas":
             this.pixelContext = record.pixelContext;
             this.drawByPixelContext();
+            break;
+        case "useFill":
+            record.fillPixelContent.forEach((fillContent, row) => {
+                fillContent.forEach((isPaint, col) => {
+                    isPaint && (
+                        willReplaceColor ? this.usePen({ row, col }, willReplaceColor) : this.useErase({ row, col })
+                    );
+                });
+            });
             break;
     }
 }
