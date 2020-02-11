@@ -17,7 +17,7 @@ function drawLineargradientLine(ctx, width, height, col, color) {
     lineargradient.addColorStop(0.8, "#fff");
     lineargradient.addColorStop(1, "#000");
     ctx.fillStyle = lineargradient;
-    ctx.fillRect(col * width, 0, Math.ceil(width), height);
+    ctx.fillRect(col * width, 0, width * 2, height);
 }
 
 function newTwoDimensionalArray(x, y) {
@@ -33,26 +33,42 @@ function isInRange(num, notLess, lessThen) {
     return num >= notLess && num < lessThen;
 }
 
-function getRGBArray(rgbStr) {
-    return rgbStr.slice(4, rgbStr.length - 1).split(',');
+function isLegalNumber(num) {
+    return !isNaN(+num);
 }
 
-function modifyRGB(rgbStr, replaceArray) {
-    const rgb = getRGBArray(rgbStr);
-    return `rgb(${rgb.map((it, idx) => ~replaceArray[idx] ? replaceArray[idx] : it).join(',')})`;
+function isLegalColor(color) {
+    if (!color) return false;
+
+    if (color.startsWith("rgb(")) {
+        const colorArr = color.replace("rgb(", '').split(",");
+        return (colorArr.length == 3
+            && isLegalNumber(colorArr[0]) && isInRange(+colorArr[0], 0, 256)
+            && isLegalNumber(colorArr[1]) && isInRange(+colorArr[1], 0, 256)
+            && isLegalNumber(colorArr[2].slice(0, -1)) && isInRange(+colorArr[2].slice(0, -1), 0, 256));
+    }
+
+    if (color.startsWith("#")) {
+        color = color.slice(1);
+        return /[0-9A-Fa-f]{3,6}/.test(color);
+    }
+
 }
 
 
 // 工具对象
 const __TOOL = {};
-__TOOL.initTool = function ({ toolBarElement, toggleGridElement, paletteElement, color, inUse, changeToolCallback }) {
+__TOOL.initTool = function ({ toolBarElement, toggleGridElement, paletteElement,
+    color, inUse, changeToolCallback }) {
 
     this.toolBarElement = toolBarElement;
     this.toggleGridElement = toggleGridElement;
     this.paletteElement = paletteElement;
 
+    this.colorFormatElement = this.paletteElement.getElementsByTagName("input")[0]
     this.colorSelectorElement = this.paletteElement.getElementsByTagName("canvas")[0];
     this.colorSelectorContext = this.colorSelectorElement.getContext("2d");
+
 
     this.inUse = inUse;
     this.displayColorSelector = false;
@@ -60,10 +76,10 @@ __TOOL.initTool = function ({ toolBarElement, toggleGridElement, paletteElement,
     this.drawLineargradientSelector(color);
 
     this.isDragToolBar = false;
-    this.addMoveToolBarListener(changeToolCallback);
+    this.addToolBarListener(changeToolCallback);
 }
 
-__TOOL.addMoveToolBarListener = function (changeToolCallback) {
+__TOOL.addToolBarListener = function (changeToolCallback) {
 
     this.toolBarElement.onmousedown = (e) => {
         this.isDragToolBar = true;
@@ -96,21 +112,27 @@ __TOOL.addMoveToolBarListener = function (changeToolCallback) {
         if (typeArr[1] == "SELECT") {
             this.changeInUse(target);
         }
-        
+
         if (typeArr[0] == "COLOR_SELECTOR") {
             const imageData = this.colorSelectorContext.getImageData(e.offsetX, e.offsetY, 1, 1);
             if (imageData.data.length > 3) {
-                this.updateCurrentColor(`rgba(${imageData.data[0]}, 
-                    ${imageData.data[1]}, ${imageData.data[2]}, ${imageData.data[3]})`);
+                this.updateCurrentColor(`rgba(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
             }
         }
 
         if (typeArr[0] == "CURRENT_COLOR") {
             this.displayColorSelector = !this.displayColorSelector;
-            this.colorSelectorElement.style.visibility = this.displayColorSelector ? "visible" : "hidden";
+            this.colorSelectorElement.className = this.displayColorSelector ? "visible" : "hidden";
         }
 
         changeToolCallback(typeArr[0]);
+    }
+
+    this.colorFormatElement.onblur = (e) => {
+        const { value } = e.currentTarget;
+        if (isLegalColor(value)) {
+            this.updateCurrentColor(value);
+        }
     }
 }
 
@@ -123,6 +145,7 @@ __TOOL.changeInUse = function (element) {
 __TOOL.updateCurrentColor = function (color) {
     this.color = color;
     this.paletteElement.firstElementChild.style.backgroundColor = color;
+    this.colorFormatElement.value = color;
 }
 
 // TODO: refactor
@@ -150,22 +173,24 @@ const __CANVAS = Object.create(__TOOL);
 __CANVAS.initCanvas = function (args) {
     this.initTool({ ...args, changeToolCallback: this.changeToolCallback.bind(this) });
 
-    const { canvasElement, gridElement, imageResolution, isGridDisplayed } = args;
+    const { canvasElement, gridElement, pasteBarElement, imageResolution, isGridDisplayed } = args;
 
     this.canvasElement = canvasElement;
     this.gridElement = gridElement;
+    this.pasteBarElement = pasteBarElement;
+    this.copySelectedElement = pasteBarElement.getElementsByTagName("canvas")[0];
 
     this.canvasContext = canvasElement.getContext("2d");
     this.gridContext = gridElement.getContext("2d");
-
+    
     // 限制大小 1000
     this.historyStack = [];
     this.undoStack = [];
-
+    
     this.setImageResolution(imageResolution);
 
     if (isGridDisplayed) {
-        this.toggleGridElement.getElementsByTagName("input")[0].checked = true;
+        this.toggleGridElement.firstElementChild.checked = true;
         this.drawGrid();
     }
 
@@ -188,6 +213,12 @@ __CANVAS.setImageResolution = function (imageResolution) {
     this.canvasHeight = imageResolution.row * this.gridSize;
     this.offsetX = Math.floor((this.canvasElement.width - this.canvasWidth) / 2);
     this.offsetY = Math.floor((this.canvasElement.height - this.canvasHeight) / 2);
+
+    this.copySelectedElement.width = this.canvasWidth;
+    this.copySelectedElement.height = this.canvasHeight;
+    this.copySelectedElement.style.top = this.offsetY + "px";
+    this.copySelectedElement.style.left = this.offsetX + "px";
+    this.copySelectedContext = this.copySelectedElement.getContext("2d");
 }
 
 __CANVAS.drawGrid = function () {
@@ -211,7 +242,6 @@ __CANVAS.removeGrid = function () {
 
 
 __CANVAS.changeToolCallback = function (id) {
-console.log(id);
     switch (id) {
         case 'PEN':
             this.canvasElement.style.cursor = "crosshair";
@@ -232,6 +262,12 @@ console.log(id);
             this.clearCanvas();
         case 'FILL':
             this.canvasElement.style.cursor = "cell";
+        case 'COLOR_PICKER':
+            this.canvasElement.style.cursor = "unset";
+        case 'COPY':
+            this.canvasElement.style.cursor = "crosshair";
+            this.pasteBarElement.className = 'visible';
+            this.toolBarElement.className = 'hidden';
         default:
             break;
     }
@@ -344,6 +380,11 @@ __CANVAS.paint = function paint(action) {
                 this.undoStack.length = 0;
             }
             break;
+        case 'COLOR_PICKER':
+            if (color && this.color != color) {
+                this.updateCurrentColor(color);
+            }
+            break;
         default:
             break;
     }
@@ -412,7 +453,7 @@ __CANVAS.onUndo = function () {
 }
 
 __CANVAS.toggleGridDisplay = function () {
-    const checkBox = this.toggleGridElement.getElementsByTagName("input")[0];
+    const checkBox = this.toggleGridElement.firstElementChild;
     if (checkBox.checked) {
         this.drawGrid();
     } else {
@@ -453,9 +494,11 @@ function main() {
     CANVAS.width = GRID.width = window.innerWidth;
     CANVAS.height = GRID.height = window.innerHeight;
 
-    const toolSize = TOOL_BAR.getBoundingClientRect();
-    COLOR_SELECTOR.width = toolSize.width;
-    COLOR_SELECTOR.height = toolSize.width;
+    const toolBarSize = TOOL_BAR.getBoundingClientRect();
+    COLOR_SELECTOR.width = toolBarSize.width * 1.5;
+    COLOR_SELECTOR.height = toolBarSize.width * 1.5;
+    COLOR_SELECTOR.style.top = toolBarSize.bottom - COLOR_SELECTOR.width + "px";
+    COLOR_SELECTOR.style.left = toolBarSize.right + "px";
 
     pixel.initCanvas({
         canvasElement: CANVAS,
@@ -465,6 +508,7 @@ function main() {
         inUse: PEN,
         color: "rgb(0,123,255)",
         paletteElement: PALETTE,
+        pasteBarElement: PASTE_BAR,
         isGridDisplayed: true,
         imageResolution: { row: 40, col: 60 }
     });
@@ -474,8 +518,6 @@ document.body.onload = function () {
     main();
 }
 
-// 取色
-// 修改颜色转换
 // 复制、粘贴
 // resize?? 兼容触摸屏？
 // 按钮防抖

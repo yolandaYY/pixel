@@ -10,8 +10,6 @@ body {
 #TOOL_BAR {
     position: absolute;
     background: #000;
-    left: 1em;
-    top: 1em;
     cursor: move;
     border: 0.5em solid;
     border-color: gray #504c4c;
@@ -32,17 +30,47 @@ body {
     box-shadow: inset 0 0 0 2px #808080, inset 0 0 0px 4px #000, inset 0 0 0px 6px #504c4c;
 }
 
-#PALETTE {
-}
 
 #CURRENT_COLOR {
-    height: 1em;
+    height: 1.5em;
+}
+
+.hidden {
+    visibility: hidden;
+}
+
+.visible {
+    visibility: visible;
 }
 
 #COLOR_SELECTOR {
-    visibility: hidden;
     position: absolute;
     border: 0.5em solid;
     border-color: gray #504c4c;
     box-shadow: 9px 9px 9px 0 #000;
 }
+
+#COLOR_FORMAT{
+    width: 10em;
+    text-align: center;
+ }
+
+ #PASTE_BAR {
+    width: 100vw;
+    height: 100vh;
+    text-align: center;
+ }
+
+ #PASTE {
+    color: #fff;
+    background: #000;
+ }
+
+ #PASTE:hover {
+     opacity: 0.5;
+     cursor: pointer;
+ }
+
+ #COPY_SELECTED {
+     position: absolute;
+ }

@@ -13,21 +13,28 @@
     <canvas id="GRID">你的浏览器不支持 canvas</canvas>
     <canvas id="CANVAS">你的浏览器不支持 canvas</canvas>
     <div id="TOOL_BAR">
-        <div id="PEN" class="tool use" data-tool-type="PEN-SELECT">画笔</div>
+        <div id="PEN" class="tool" data-tool-type="PEN-SELECT">画笔</div>
         <div id="ERASE" class="tool" data-tool-type="ERASE-SELECT">橡皮擦</div>
         <div id="FILL" class="tool" data-tool-type="FILL-SELECT">填充</div>
+        <div id="COPY" class="tool" data-tool-type="COPY-CLICK">复制</div>
         <div id="UNDO" class="tool" data-tool-type="UNDO-CLICK">撤回</div>
         <div id="REDO" class="tool" data-tool-type="REDO-CLICK">前进</div>
         <div id="CLEAR" class="tool" data-tool-type="CLEAR-CLICK">清空</div>
-        <div id="TOGGLE_GRID" class="tool">
-            <label>
+        <label>
+            <div id="TOGGLE_GRID" class="tool">
                 <input type="checkbox" data-tool-type="TOGGLE_GRID-CLICK" />显示网格
-            </label>
-        </div>
+            </div>
+        </label>
         <div id="PALETTE" class="tool">
             <div id="CURRENT_COLOR" data-tool-type="CURRENT_COLOR-PICK" title="点击显示颜色选择器"></div>
-            <canvas id="COLOR_SELECTOR" data-tool-type="COLOR_SELECTOR-PICK">你的浏览器不支持 canvas</canvas>
+            <input id="COLOR_FORMAT" type="text" data-tool-type="COLOR_FORMAT-INPUT" title="输入颜色（支持rgb、hex格式）" />
+            <canvas id="COLOR_SELECTOR" class="hidden" data-tool-type="COLOR_SELECTOR-PICK">你的浏览器不支持 canvas</canvas>
         </div>
+        <div id="COLOR_PICKER" class="tool" data-tool-type="COLOR_PICKER-SELECT">取色</div>
+    </div>
+    <div id="PASTE_BAR" class="hidden">
+        <canvas id="COPY_SELECTED">你的浏览器不支持 canvas</canvas>
+        <div id="PASTE" data-tool-type="PASTE-CLICK">右键粘贴 <span style="color: red;">X</span></div>
     </div>
 </body>
 
