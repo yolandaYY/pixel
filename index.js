@@ -10,6 +10,16 @@ function drawLineToContext(context, sx, sy, ex, ey) {
     context.stroke();
 }
 
+function drawLineargradientLine(ctx, width, height, col, color) {
+    const lineargradient = ctx.createLinearGradient(0, 0, 0, height);
+    lineargradient.addColorStop(0, "#000");
+    lineargradient.addColorStop(0.4, color);
+    lineargradient.addColorStop(0.8, "#fff");
+    lineargradient.addColorStop(1, "#000");
+    ctx.fillStyle = lineargradient;
+    ctx.fillRect(col * width, 0, Math.ceil(width), height);
+}
+
 function newTwoDimensionalArray(x, y) {
     const arr = [];
     for (let i = 0; i < x; i++) {
@@ -32,79 +42,22 @@ function modifyRGB(rgbStr, replaceArray) {
     return `rgb(${rgb.map((it, idx) => ~replaceArray[idx] ? replaceArray[idx] : it).join(',')})`;
 }
 
-// 滑动条
-
-const __SLIDER = {};
-__SLIDER.initSlider = function (sliderElement, precent, onChange) {
-    this.sliderElement = sliderElement;
-    this.precent = precent;
-    this.isSliding = false;
-    this.onChange = onChange;
-    this.addSliderListener();
-    this.updatePointPosition();
-}
-
-__SLIDER.updatePointPosition = function () {
-    const bar = this.sliderElement;
-    const point = this.sliderElement.firstElementChild;
-    const barSize = bar.getBoundingClientRect();
-    const pointSize = point.getBoundingClientRect();
-    point.style.left = this.precent * barSize.width - (pointSize.width / 2) + "px";
-}
-
-__SLIDER.addSliderListener = function () {
-    this.sliderElement.onmousedown = (e) => {
-        this.isSliding = true;
-    }
-    this.sliderElement.onmouseup = (e) => {
-        this.isSliding = false;
-    }
-    this.sliderElement.onmousemove = (e) => {
-        if (this.isSliding) {
-            const bar = this.sliderElement;
-            const point = this.sliderElement.firstElementChild;
-            const barSize = bar.getBoundingClientRect();
-            const pointSize = point.getBoundingClientRect();
-            const halfWidthOfPoint = pointSize.width / 2;
-            if ((e.movementX < 0 && pointSize.left + halfWidthOfPoint < barSize.left)
-                || (e.movementX > 0 && pointSize.left + halfWidthOfPoint > barSize.right)) {
-                this.isSliding = false;
-                return;
-            }
-            const left = parseInt(point.style.left || 0) + e.movementX;
-            point.style.left = left + "px";
-            this.precent = (left + halfWidthOfPoint) / barSize.width;
-            this.onChange(this.precent);
-        }
-    }
-}
-
 
 // 工具对象
 const __TOOL = {};
-__TOOL.initTool = function ({ toolBarElement, toggleGridElement, colorSelector, inUse, color, changeToolCallback }) {
+__TOOL.initTool = function ({ toolBarElement, toggleGridElement, paletteElement, color, inUse, changeToolCallback }) {
 
     this.toolBarElement = toolBarElement;
     this.toggleGridElement = toggleGridElement;
-    this.colorSelector = colorSelector;
+    this.paletteElement = paletteElement;
+
+    this.colorSelectorElement = this.paletteElement.getElementsByTagName("canvas")[0];
+    this.colorSelectorContext = this.colorSelectorElement.getContext("2d");
 
     this.inUse = inUse;
-    this.color = color;
-    this.updateColorDisplay();
-
-    const colors = getRGBArray(color);
-    this.sliderR = Object.create(__SLIDER);
-    this.sliderG = Object.create(__SLIDER);
-    this.sliderB = Object.create(__SLIDER);
-
-    ["sliderR", "sliderG", "sliderB"].map((key, idx) => {
-        this[key].initSlider(this.colorSelector[key], colors[idx] / 255, (precent) => {
-            const colorArray = getRGBArray(this.color);
-            colorArray[idx] = Math.floor(precent * 255);
-            this.color = modifyRGB(this.color, colorArray);
-            this.updateColorDisplay();
-        });
-    });
+    this.displayColorSelector = false;
+    this.updateCurrentColor(color);
+    this.drawLineargradientSelector(color);
 
     this.isDragToolBar = false;
     this.addMoveToolBarListener(changeToolCallback);
@@ -143,6 +96,20 @@ __TOOL.addMoveToolBarListener = function (changeToolCallback) {
         if (typeArr[1] == "SELECT") {
             this.changeInUse(target);
         }
+        
+        if (typeArr[0] == "COLOR_SELECTOR") {
+            const imageData = this.colorSelectorContext.getImageData(e.offsetX, e.offsetY, 1, 1);
+            if (imageData.data.length > 3) {
+                this.updateCurrentColor(`rgba(${imageData.data[0]}, 
+                    ${imageData.data[1]}, ${imageData.data[2]}, ${imageData.data[3]})`);
+            }
+        }
+
+        if (typeArr[0] == "CURRENT_COLOR") {
+            this.displayColorSelector = !this.displayColorSelector;
+            this.colorSelectorElement.style.visibility = this.displayColorSelector ? "visible" : "hidden";
+        }
+
         changeToolCallback(typeArr[0]);
     }
 }
@@ -153,8 +120,27 @@ __TOOL.changeInUse = function (element) {
     this.inUse.className = "tool use";
 }
 
-__TOOL.updateColorDisplay = function () {
-    this.colorSelector.colorDisplayElement.style.backgroundColor = this.color;
+__TOOL.updateCurrentColor = function (color) {
+    this.color = color;
+    this.paletteElement.firstElementChild.style.backgroundColor = color;
+}
+
+// TODO: refactor
+__TOOL.drawLineargradientSelector = function (color) {
+    const { width, height } = this.colorSelectorElement;
+    const colors = [
+        "#cf010b", "#eb7012", "#f19914", "#f7c71b",
+        "#fdf21c", "#cade1b", "#96c71e", "#65af1c",
+        "#019219", "#019678", "#0195a3", "#0197ca",
+        "#0198f1", "#007dd1", "#0162b3", "#004593",
+        "#000267", "#51005c", "#7b014a", "#a40037"
+    ];
+    const lineWidth = width / colors.length;
+
+    const drawLine = drawLineargradientLine.bind(this, this.colorSelectorContext, lineWidth, height);
+    colors.forEach((color, idx) => {
+        drawLine(idx, color);
+    });
 }
 
 
@@ -225,7 +211,7 @@ __CANVAS.removeGrid = function () {
 
 
 __CANVAS.changeToolCallback = function (id) {
-
+console.log(id);
     switch (id) {
         case 'PEN':
             this.canvasElement.style.cursor = "crosshair";
@@ -246,6 +232,8 @@ __CANVAS.changeToolCallback = function (id) {
             this.clearCanvas();
         case 'FILL':
             this.canvasElement.style.cursor = "cell";
+        default:
+            break;
     }
 }
 
@@ -433,7 +421,7 @@ __CANVAS.toggleGridDisplay = function () {
 }
 
 __CANVAS.addMouseListener = function () {
-    this.canvasElement.onmousedown = (e) => {
+    this.canvasElement.onpointerdown = (e) => {
         this.mousedrag = true;
     };
 
@@ -442,18 +430,18 @@ __CANVAS.addMouseListener = function () {
         this.paint({ x: clientX, y: clientY });
     }
 
-    this.canvasElement.onmousemove = (e) => {
+    this.canvasElement.onpointermove = (e) => {
         if (this.mousedrag) {
             var { clientX, clientY } = e;
             this.paint({ x: clientX, y: clientY });
         }
     };
 
-    this.canvasElement.onmouseleave = (e) => {
+    this.canvasElement.onpointerleave = (e) => {
         this.mousedrag = false;
     }
 
-    this.canvasElement.onmouseup = (e) => {
+    this.canvasElement.onpointerup = (e) => {
         this.mousedrag = false;
     };
 }
@@ -464,6 +452,11 @@ function main() {
     const pixel = Object.create(__CANVAS);
     CANVAS.width = GRID.width = window.innerWidth;
     CANVAS.height = GRID.height = window.innerHeight;
+
+    const toolSize = TOOL_BAR.getBoundingClientRect();
+    COLOR_SELECTOR.width = toolSize.width;
+    COLOR_SELECTOR.height = toolSize.width;
+
     pixel.initCanvas({
         canvasElement: CANVAS,
         gridElement: GRID,
@@ -471,18 +464,18 @@ function main() {
         toggleGridElement: TOGGLE_GRID,
         inUse: PEN,
         color: "rgb(0,123,255)",
-        colorSelector: {
-            sliderR: R, sliderG: G, sliderB: B, colorDisplayElement: COLOR_DISPLAY,
-        },
+        paletteElement: PALETTE,
         isGridDisplayed: true,
         imageResolution: { row: 40, col: 60 }
     });
 }
 
-main();
+document.body.onload = function () {
+    main();
+}
 
-// 实现填充(todo: undo、redo)
-// 修改颜色
+// 取色
 // 修改颜色转换
-// resize??
+// 复制、粘贴
+// resize?? 兼容触摸屏？
 // 按钮防抖

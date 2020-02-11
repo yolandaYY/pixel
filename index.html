@@ -24,17 +24,9 @@
                 <input type="checkbox" data-tool-type="TOGGLE_GRID-CLICK" />显示网格
             </label>
         </div>
-        <div id="COLOR_SELECTOR">
-            <div id="COLOR_DISPLAY"></div>
-            <div id="R" class="selector">
-                <div class="slider" draggable="false">R</div>
-            </div>
-            <div id="G" class="selector">
-                <div class="slider" draggable="false">G</div>
-            </div>
-            <div id="B" class="selector">
-                <div class="slider" draggable="false">B</div>
-            </div>
+        <div id="PALETTE" class="tool">
+            <div id="CURRENT_COLOR" data-tool-type="CURRENT_COLOR-PICK" title="点击显示颜色选择器"></div>
+            <canvas id="COLOR_SELECTOR" data-tool-type="COLOR_SELECTOR-PICK">你的浏览器不支持 canvas</canvas>
         </div>
     </div>
 </body>

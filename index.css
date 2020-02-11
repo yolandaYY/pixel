@@ -3,7 +3,7 @@ body {
     overflow: hidden;
 }
 
-#GRID, CANVAS {
+#GRID, #CANVAS {
     position: absolute;
 }
 
@@ -13,19 +13,9 @@ body {
     left: 1em;
     top: 1em;
     cursor: move;
-    border: .5em solid #fff;
+    border: 0.5em solid;
     border-color: gray #504c4c;
     box-shadow: 9px 9px 9px 0 #000;
-}
-
-.btn {
-    margin: 1rem;
-    padding: 0.5rem;
-    text-align: center;
-    color: #fff;
-    cursor: pointer;
-    user-select: none;
-    border: 1px solid #3c3c3c;
 }
 
 .tool {
@@ -42,28 +32,17 @@ body {
     box-shadow: inset 0 0 0 2px #808080, inset 0 0 0px 4px #000, inset 0 0 0px 6px #504c4c;
 }
 
-.selector {
-    width: 6rem;
-    height: 0.5rem;
-    margin: 1rem;
-    background-color: gray;
+#PALETTE {
 }
 
-.slider {
-    border-radius: 50%;
-    width: 1rem;
-    height: 1rem;
-    background-color: #fff;
-    color: #000;
-    position: relative;
-    bottom: 0.5rem;
-    line-height: 1rem;
-    cursor: pointer;
-    user-select: none;
+#CURRENT_COLOR {
+    height: 1em;
 }
 
-#COLOR_DISPLAY {
-    width: 6rem;
-    margin: 1rem;
-    height: 1rem;
+#COLOR_SELECTOR {
+    visibility: hidden;
+    position: absolute;
+    border: 0.5em solid;
+    border-color: gray #504c4c;
+    box-shadow: 9px 9px 9px 0 #000;
 }
