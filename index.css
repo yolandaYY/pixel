@@ -14,25 +14,30 @@ body {
     border: 0.5em solid;
     border-color: gray #504c4c;
     box-shadow: 9px 9px 9px 0 #000;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    width: 12rem;
+}
+
+.glass {
+    position: absolute;
+    width: 2rem;
+    height: 2rem;
 }
 
 .tool {
     margin: 1rem;
-    padding: 0.5rem;
+    width: 2rem;
+    height: 2rem;
     text-align: center;
     color: #fff;
     cursor: pointer;
     user-select: none;
-    border: 1px solid #3c3c3c;
 }
 
 .use {
-    box-shadow: inset 0 0 0 2px #808080, inset 0 0 0px 4px #000, inset 0 0 0px 6px #504c4c;
-}
-
-
-#CURRENT_COLOR {
-    height: 1.5em;
+    background: #ffffff69;
 }
 
 .hidden {
@@ -43,15 +48,31 @@ body {
     visibility: visible;
 }
 
-#COLOR_SELECTOR {
+#PALETTE {
+    text-align: center;
+    margin: 0.5rem;
+    cursor: pointer;
+}
+
+#CURRENT_COLOR {
+    height: 2rem;
+    width: 8rem;
+}
+
+
+#CURRENT_COLOR, #COLOR_FORMAT {
+    width: 8rem;
+}
+
+#COLOR_FORMAT{
+    text-align: center;
+ }
+
+ #COLOR_SELECTOR {
     position: absolute;
     box-shadow: 0px 0px 0px 4px grey, 0px 0px 0px 8px #504c4c, 10px 9px 15px 10px #000;
 }
 
-#COLOR_FORMAT{
-    width: 10em;
-    text-align: center;
- }
 
  #PASTE_BAR {
     position: absolute;
@@ -69,13 +90,14 @@ body {
     float: left;
 }
 
-#PASTE:hover {
+#PASTE_CLOSE:hover, #PASTE:hover {
     opacity: 0.5;
     cursor: pointer;
 }
 
 #PASTE_CLOSE {
     float: right;
+    color: red;
  }
 
  #COPY_SELECT {

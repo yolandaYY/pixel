@@ -54,14 +54,20 @@ function isLegalColor(color) {
 
 }
 
+function createDownLoad(link) {
+    const a = document.createElement("a");
+    a.href = link;
+    a.download = "我的作品";
+    a.click();
+}
+
 
 // 工具对象
 const __TOOL = {};
-__TOOL.initTool = function ({ toolBarElement, toggleGridElement, paletteElement,
+__TOOL.initTool = function ({ toolBarElement, paletteElement,
     color, inUse, changeToolCallback }) {
 
     this.toolBarElement = toolBarElement;
-    this.toggleGridElement = toggleGridElement;
     this.paletteElement = paletteElement;
 
     this.colorFormatElement = this.paletteElement.getElementsByTagName("input")[0]
@@ -104,6 +110,7 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
 
     this.toolBarElement.onclick = (e) => {
         const { target } = e;
+
         const { toolType } = target.dataset;
         if (!toolType) return;
         const typeArr = toolType.split("-");
@@ -134,9 +141,9 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
 }
 
 __TOOL.changeInUse = function (element) {
-    this.inUse.className = "tool";
+    this.inUse.className = this.inUse.className.replace(' use', '');
     this.inUse = element;
-    this.inUse.className = "tool use";
+    this.inUse.className = this.inUse.className + " use";
 }
 
 __TOOL.updateCurrentColor = function (color) {
@@ -195,7 +202,6 @@ __CANVAS.initCanvas = function (args) {
     this.setImageResolution(imageResolution);
 
     if (isGridDisplayed) {
-        this.toggleGridElement.firstElementChild.checked = true;
         this.drawGrid();
     }
 
@@ -288,6 +294,9 @@ __CANVAS.changeToolCallback = function (id) {
         case 'COPY':
             this.startCopy();
             break;
+        case 'DOWNLOAD_IMAGE':
+            createDownLoad(this.canvasElement.toDataURL());
+            break;
         default:
             break;
     }
@@ -378,8 +387,10 @@ __CANVAS.paint = function (action) {
     if (!this.isInCanvas(x, y)) return;
     const pos = this.tranformCoordinateToCanvas(x, y);
     const color = this.getPixelContext(pos);
+    const { toolType } = this.inUse.dataset;
+    const typeArr = toolType.split('-');
 
-    switch (this.inUse.id) {
+    switch (typeArr[0]) {
         case "PEN":
             if (this.color != color) {
                 this.usePen(pos);
@@ -504,8 +515,8 @@ __CANVAS.usePaste = function (e) {
 }
 
 __CANVAS.toggleGridDisplay = function () {
-    const checkBox = this.toggleGridElement.firstElementChild;
-    if (checkBox.checked) {
+    this.isGridDisplayed = !this.isGridDisplayed;
+    if (this.isGridDisplayed) {
         this.drawGrid();
     } else {
         this.removeGrid();
@@ -607,13 +618,12 @@ function main() {
         canvasElement: CANVAS,
         gridElement: GRID,
         toolBarElement: TOOL_BAR,
-        toggleGridElement: TOGGLE_GRID,
-        inUse: PEN,
+        inUse: PEN.firstElementChild,
         color: "rgb(0,123,255)",
         paletteElement: PALETTE,
         pasteBarElement: PASTE_BAR,
         isGridDisplayed: true,
-        imageResolution: { row: 40, col: 60 }
+        imageResolution: { row: 60, col: 100 }
     });
 }
 
@@ -622,6 +632,7 @@ document.body.onload = function () {
 }
 
 // 镜像复制(TODO: undo、redo)
+// 颜色盘
 // 包装一个拖拽控件
 // resize?? 兼容触摸屏？
 // 按钮防抖
