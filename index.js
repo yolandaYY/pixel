@@ -13,9 +13,8 @@ function drawLineToContext(context, sx, sy, ex, ey) {
 function drawLineargradientLine(ctx, width, height, col, color) {
     const lineargradient = ctx.createLinearGradient(0, 0, 0, height);
     lineargradient.addColorStop(0, "#000");
-    lineargradient.addColorStop(0.4, color);
-    lineargradient.addColorStop(0.8, "#fff");
-    lineargradient.addColorStop(1, "#000");
+    lineargradient.addColorStop(0.5, color);
+    lineargradient.addColorStop(1, "#fff");
     ctx.fillStyle = lineargradient;
     ctx.fillRect(col * width, 0, width * 2, height);
 }
@@ -116,7 +115,7 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
         if (typeArr[0] == "COLOR_SELECTOR") {
             const imageData = this.colorSelectorContext.getImageData(e.offsetX, e.offsetY, 1, 1);
             if (imageData.data.length > 3) {
-                this.updateCurrentColor(`rgba(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
+                this.updateCurrentColor(`rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
             }
         }
 
@@ -130,9 +129,7 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
 
     this.colorFormatElement.onblur = (e) => {
         const { value } = e.currentTarget;
-        if (isLegalColor(value)) {
-            this.updateCurrentColor(value);
-        }
+        this.updateCurrentColor(isLegalColor(value) ? value : this.color);
     }
 }
 
@@ -149,21 +146,25 @@ __TOOL.updateCurrentColor = function (color) {
 }
 
 // TODO: refactor
-__TOOL.drawLineargradientSelector = function (color) {
+__TOOL.drawLineargradientSelector = function () {
     const { width, height } = this.colorSelectorElement;
     const colors = [
         "#cf010b", "#eb7012", "#f19914", "#f7c71b",
         "#fdf21c", "#cade1b", "#96c71e", "#65af1c",
         "#019219", "#019678", "#0195a3", "#0197ca",
         "#0198f1", "#007dd1", "#0162b3", "#004593",
-        "#000267", "#51005c", "#7b014a", "#a40037"
+        "#000267", "#51005c", "#7b014a", "#a40037",
     ];
-    const lineWidth = width / colors.length;
-
+    const lineWidth = width / (colors.length + 1);
     const drawLine = drawLineargradientLine.bind(this, this.colorSelectorContext, lineWidth, height);
     colors.forEach((color, idx) => {
         drawLine(idx, color);
     });
+    const lineargradient = this.colorSelectorContext.createLinearGradient(0, 0, 0, height);
+    lineargradient.addColorStop(0.1, "#000");
+    lineargradient.addColorStop(0.9, "#fff");
+    this.colorSelectorContext.fillStyle = lineargradient;
+    this.colorSelectorContext.fillRect(colors.length * lineWidth, 0, lineWidth * 2, height);
 }
 
 
@@ -178,15 +179,19 @@ __CANVAS.initCanvas = function (args) {
     this.canvasElement = canvasElement;
     this.gridElement = gridElement;
     this.pasteBarElement = pasteBarElement;
-    this.copySelectedElement = pasteBarElement.getElementsByTagName("canvas")[0];
+    this.copySelectElement = pasteBarElement.getElementsByTagName("canvas")[0];
 
     this.canvasContext = canvasElement.getContext("2d");
     this.gridContext = gridElement.getContext("2d");
-    
+
     // 限制大小 1000
     this.historyStack = [];
     this.undoStack = [];
-    
+
+    //已选中复制区域
+    this.copyRect = {};
+    this.isStartPaste = false;
+
     this.setImageResolution(imageResolution);
 
     if (isGridDisplayed) {
@@ -214,11 +219,11 @@ __CANVAS.setImageResolution = function (imageResolution) {
     this.offsetX = Math.floor((this.canvasElement.width - this.canvasWidth) / 2);
     this.offsetY = Math.floor((this.canvasElement.height - this.canvasHeight) / 2);
 
-    this.copySelectedElement.width = this.canvasWidth;
-    this.copySelectedElement.height = this.canvasHeight;
-    this.copySelectedElement.style.top = this.offsetY + "px";
-    this.copySelectedElement.style.left = this.offsetX + "px";
-    this.copySelectedContext = this.copySelectedElement.getContext("2d");
+    this.copySelectElement.width = this.canvasWidth;
+    this.copySelectElement.height = this.canvasHeight;
+    this.copySelectElement.style.top = this.offsetY + "px";
+    this.copySelectElement.style.left = this.offsetX + "px";
+    this.copySelectContext = this.copySelectElement.getContext("2d");
 }
 
 __CANVAS.drawGrid = function () {
@@ -240,6 +245,19 @@ __CANVAS.removeGrid = function () {
     this.gridContext.clearRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
 }
 
+__CANVAS.startCopy = function () {
+    this.pasteBarElement.className = 'visible';
+    this.toolBarElement.className = 'hidden';
+    this.colorSelectorElement.className = 'hidden';
+}
+
+__CANVAS.closeCopy = function () {
+    this.inUse.click();
+    this.pasteBarElement.className = 'hidden';
+    this.toolBarElement.className = 'visible';
+    this.copyRect = {};
+    this.isStartPaste = false;
+}
 
 __CANVAS.changeToolCallback = function (id) {
     switch (id) {
@@ -260,14 +278,16 @@ __CANVAS.changeToolCallback = function (id) {
             break;
         case 'CLEAR':
             this.clearCanvas();
+            break;
         case 'FILL':
             this.canvasElement.style.cursor = "cell";
+            break;
         case 'COLOR_PICKER':
             this.canvasElement.style.cursor = "unset";
+            break;
         case 'COPY':
-            this.canvasElement.style.cursor = "crosshair";
-            this.pasteBarElement.className = 'visible';
-            this.toolBarElement.className = 'hidden';
+            this.startCopy();
+            break;
         default:
             break;
     }
@@ -353,7 +373,7 @@ __CANVAS.drawByPixelContext = function () {
     });
 }
 
-__CANVAS.paint = function paint(action) {
+__CANVAS.paint = function (action) {
     const { x, y } = action;
     if (!this.isInCanvas(x, y)) return;
     const pos = this.tranformCoordinateToCanvas(x, y);
@@ -452,6 +472,37 @@ __CANVAS.onUndo = function () {
     }
 }
 
+__CANVAS.usePaste = function (e) {
+    const { offsetX, offsetY } = e;
+    const { sx, sy, ex, ey } = this.copyRect;
+    if (!(sx && sy && ex && ey)) return;
+    const beginCopyRow = Math.floor(Math.min(sy, ey) / this.gridSize);
+    const beginCopyCol = Math.floor(Math.min(sx, ex) / this.gridSize);
+    const endCopyRow = Math.floor(Math.max(sy, ey) / this.gridSize);
+    const endCopyCol = Math.floor(Math.max(sx, ex) / this.gridSize);
+
+    const startPasteRow = Math.floor(offsetY / this.gridSize);
+    const startPasteCol = Math.floor(offsetX / this.gridSize);
+
+    const fillPixelContent = newTwoDimensionalArray(this.imageResolution.row, this.imageResolution.col);
+
+    for (let row = beginCopyRow, i = 0; row <= endCopyRow; ++row, i++) {
+        for (let col = beginCopyCol, j = 0; col <= endCopyCol; ++col, j++) {
+            const color = this.getPixelContext({ row, col });
+            const _row = startPasteRow + i;
+            const _col = startPasteCol + j;
+            if (color && isInRange(_row, 0, this.imageResolution.row) && isInRange(_col, 0, this.imageResolution.col)) {
+                this.usePen({ row: _row, col: _col }, color);
+                fillPixelContent[_row][_col] = color;
+            }
+        }
+    }
+    this.isStartPaste = false;
+    this.copySelectElement.style.cursor = "crosshair";
+
+    return fillPixelContent;
+}
+
 __CANVAS.toggleGridDisplay = function () {
     const checkBox = this.toggleGridElement.firstElementChild;
     if (checkBox.checked) {
@@ -485,6 +536,58 @@ __CANVAS.addMouseListener = function () {
     this.canvasElement.onpointerup = (e) => {
         this.mousedrag = false;
     };
+
+    // 复制粘贴
+    this.pasteBarElement.onclick = (e) => {
+        switch (e.target.dataset.toolType) {
+            case "PASTE_CLOSE-CLICK":
+                this.closeCopy();
+                break;
+            case "PASTE-CLICK":
+                if (this.copyRect.ex) {
+                    this.isStartPaste = true;
+                    this.copySelectElement.style.cursor = "unset";
+                }
+                break;
+        }
+    }
+
+    this.copySelectElement.onpointerdown = (e) => {
+        const { currentTarget, button } = e;
+        if ((button == 2 && this.copyRect.ex) || this.isStartPaste) {
+            this.usePaste(e);
+        } else {
+            this.mousedrag = true;
+            this.copyRect.sx = e.offsetX;
+            this.copyRect.sy = e.offsetY;
+        }
+        this.copySelectContext.clearRect(0, 0, currentTarget.width, currentTarget.height);
+    };
+
+    this.copySelectElement.onpointermove = (e) => {
+        const { currentTarget } = e;
+        if (this.mousedrag) {
+            this.copyRect.ex = e.offsetX;
+            this.copyRect.ey = e.offsetY;
+            const { sx, sy, ex, ey } = this.copyRect;
+            this.copySelectContext.clearRect(0, 0, currentTarget.width, currentTarget.height);
+            this.copySelectContext.strokeRect(Math.min(sx, ex), Math.min(sy, ey),
+                Math.abs(ex - sx), Math.abs(ey - sy));
+        }
+    };
+
+    this.copySelectElement.onpointerleave = (e) => {
+        this.mousedrag = false;
+    }
+
+    this.copySelectElement.onpointerup = (e) => {
+        this.mousedrag = false;
+    };
+
+    //取消所有右键默认事件
+    document.oncontextmenu = function (e) {
+        return false;
+    }
 }
 
 
@@ -518,6 +621,7 @@ document.body.onload = function () {
     main();
 }
 
-// 复制、粘贴
+// 镜像复制(TODO: undo、redo)
+// 包装一个拖拽控件
 // resize?? 兼容触摸屏？
 // 按钮防抖
