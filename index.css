@@ -3,11 +3,11 @@ body {
     overflow: hidden;
 }
 
-#GRID, #CANVAS {
+#grid, #canvas {
     position: absolute;
 }
 
-#TOOL_BAR {
+#tool-bar {
     position: absolute;
     background: #000;
     cursor: move;
@@ -17,7 +17,8 @@ body {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
-    width: 12rem;
+    width: 10vw;
+    min-width: 10rem;
 }
 
 .glass {
@@ -48,59 +49,66 @@ body {
     visibility: visible;
 }
 
-#PALETTE {
+#palette {
     text-align: center;
     margin: 0.5rem;
     cursor: pointer;
 }
 
-#CURRENT_COLOR {
+#current-color {
     height: 2rem;
     width: 8rem;
 }
 
 
-#CURRENT_COLOR, #COLOR_FORMAT {
+#current-color, #color-format {
     width: 8rem;
 }
 
-#COLOR_FORMAT{
+#color-format{
     text-align: center;
  }
 
- #COLOR_SELECTOR {
+ #color-selector {
     position: absolute;
     box-shadow: 0px 0px 0px 4px grey, 0px 0px 0px 8px #504c4c, 10px 9px 15px 10px #000;
 }
 
 
- #PASTE_BAR {
+ #paste-bar {
     position: absolute;
     width: 100vw;
     height: 100vh;
  }
 
- #PASTE, #PASTE_CLOSE {
+ #paste, #paste-close {
     color: #fff;
     background: #000;
     cursor: pointer;
 }
     
-#PASTE {
+#paste {
     float: left;
 }
 
-#PASTE_CLOSE:hover, #PASTE:hover {
+#paste-close:hover, #paste:hover {
     opacity: 0.5;
     cursor: pointer;
 }
 
-#PASTE_CLOSE {
+#paste-close {
     float: right;
     color: red;
  }
 
- #COPY_SELECT {
+ #copy-select {
     position: absolute;
     cursor: crosshair;
+ }
+
+ #color-grid {
+     display: flex;
+     justify-content: space-around;
+     flex-wrap: wrap;
+     width: max-content;
  }

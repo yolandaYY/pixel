@@ -111,22 +111,22 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
     this.toolBarElement.onclick = (e) => {
         const { target } = e;
 
-        const { toolType } = target.dataset;
-        if (!toolType) return;
-        const typeArr = toolType.split("-");
+        const { type } = target.dataset;
+        if (!type) return;
+        const typeArr = type.split("-");
 
-        if (typeArr[1] == "SELECT") {
+        if (typeArr[1] == "select") {
             this.changeInUse(target);
         }
 
-        if (typeArr[0] == "COLOR_SELECTOR") {
+        if (typeArr[0] == "color-selector") {
             const imageData = this.colorSelectorContext.getImageData(e.offsetX, e.offsetY, 1, 1);
             if (imageData.data.length > 3) {
                 this.updateCurrentColor(`rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
             }
         }
 
-        if (typeArr[0] == "CURRENT_COLOR") {
+        if (typeArr[0] == "current-color") {
             this.displayColorSelector = !this.displayColorSelector;
             this.colorSelectorElement.className = this.displayColorSelector ? "visible" : "hidden";
         }
@@ -267,34 +267,34 @@ __CANVAS.closeCopy = function () {
 
 __CANVAS.changeToolCallback = function (id) {
     switch (id) {
-        case 'PEN':
+        case 'pen':
             this.canvasElement.style.cursor = "crosshair";
             break;
-        case 'ERASE':
+        case 'erase':
             this.canvasElement.style.cursor = "help";
             break;
-        case 'TOGGLE_GRID':
+        case 'toggle-grid':
             this.toggleGridDisplay();
             break;
-        case 'UNDO':
+        case 'undo':
             this.onUndo();
             break;
-        case 'REDO':
+        case 'redo':
             this.onRedo();
             break;
-        case 'CLEAR':
+        case 'clear':
             this.clearCanvas();
             break;
-        case 'FILL':
+        case 'fill':
             this.canvasElement.style.cursor = "cell";
             break;
-        case 'COLOR_PICKER':
+        case 'color-picker':
             this.canvasElement.style.cursor = "unset";
             break;
-        case 'COPY':
+        case 'copy':
             this.startCopy();
             break;
-        case 'DOWNLOAD_IMAGE':
+        case 'download-image':
             createDownLoad(this.canvasElement.toDataURL());
             break;
         default:
@@ -387,31 +387,31 @@ __CANVAS.paint = function (action) {
     if (!this.isInCanvas(x, y)) return;
     const pos = this.tranformCoordinateToCanvas(x, y);
     const color = this.getPixelContext(pos);
-    const { toolType } = this.inUse.dataset;
-    const typeArr = toolType.split('-');
+    const { type } = this.inUse.dataset;
+    const typeArr = type.split('-');
 
     switch (typeArr[0]) {
-        case "PEN":
+        case "pen":
             if (this.color != color) {
                 this.usePen(pos);
                 this.historyStack.push({ willReplaceColor: color, paintColor: this.color, pos, action: "usePen" });
                 this.undoStack.length = 0;
             }
             break;
-        case "ERASE":
+        case "erase":
             if (color) {
                 this.useErase(pos);
                 this.historyStack.push({ willReplaceColor: color, pos, action: "useErase" });
                 this.undoStack.length = 0;
             }
             break;
-        case 'FILL':
+        case 'fill':
             if (this.color != color) {
                 this.historyStack.push({ willReplaceColor: color, paintColor: this.color, fillPixelContent: this.useFill(pos), action: "useFill" });
                 this.undoStack.length = 0;
             }
             break;
-        case 'COLOR_PICKER':
+        case 'color-picker':
             if (color && this.color != color) {
                 this.updateCurrentColor(color);
             }
@@ -550,11 +550,11 @@ __CANVAS.addMouseListener = function () {
 
     // 复制粘贴
     this.pasteBarElement.onclick = (e) => {
-        switch (e.target.dataset.toolType) {
-            case "PASTE_CLOSE-CLICK":
+        switch (e.target.dataset.type) {
+            case "paste-close-click":
                 this.closeCopy();
                 break;
-            case "PASTE-CLICK":
+            case "paste-click":
                 if (this.copyRect.ex) {
                     this.isStartPaste = true;
                     this.copySelectElement.style.cursor = "unset";
@@ -604,6 +604,14 @@ __CANVAS.addMouseListener = function () {
 
 // 主函数
 function main() {
+    const CANVAS = document.getElementById("canvas");
+    const GRID = document.getElementById("grid");
+    const TOOL_BAR = document.getElementById("tool-bar");
+    const COLOR_SELECTOR = document.getElementById("color-selector");
+    const PEN = document.querySelector("#pen > .glass");
+    const PALETTE = document.getElementById("palette");
+    const PASTE_BAR = document.getElementById("paste-bar");
+
     const pixel = Object.create(__CANVAS);
     CANVAS.width = GRID.width = window.innerWidth;
     CANVAS.height = GRID.height = window.innerHeight;
@@ -618,8 +626,9 @@ function main() {
         canvasElement: CANVAS,
         gridElement: GRID,
         toolBarElement: TOOL_BAR,
-        inUse: PEN.firstElementChild,
+        inUse: PEN,
         color: "rgb(0,123,255)",
+        colorGrid: 5,
         paletteElement: PALETTE,
         pasteBarElement: PASTE_BAR,
         isGridDisplayed: true,
@@ -631,8 +640,30 @@ document.body.onload = function () {
     main();
 }
 
-// 镜像复制(TODO: undo、redo)
-// 颜色盘
+// 写文档，制定规则（节点捕获），改一下命名
+// 重构一下边界判断
+// 重构颜色取样
+// 重构复制粘贴(粘贴加个轮廓提示)
 // 包装一个拖拽控件
-// resize?? 兼容触摸屏？
+// 修改tool bar的拖拽、边界、缩小
+// 历史记录变成基于一个操作（路径）（增加历史记录面板）
 // 按钮防抖
+// 重构样式（指针样式）
+// 颜色盘
+// 镜像复制(TODO: undo、redo)
+// resize?? 兼容触摸屏？
+// 放大缩小
+// 画布调整大小（数值边界）
+// 画布左移右移
+// 橡皮擦调整大小
+// 画笔调整大小
+// 调色盘调整大小
+// 图标下添加小字
+// 实时本地存储
+// 文件导入（添加背景图）、导出（制定存储格式）
+// 预览
+// 添加新画布
+// 制作简单动画
+// 重写复制粘贴（勾勒轮廓）
+// 图层
+// 添加加载动画
