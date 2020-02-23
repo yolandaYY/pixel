@@ -2,6 +2,28 @@
 
 // 工具函数
 
+function setElementSize(element, width, height) {
+    element.width = width;
+    element.height = height;
+}
+
+function getElementByKey(key) {
+    return document.querySelector(`[key=${key}`);
+}
+
+function getElementKeyObj(element) {
+    const key = element.getAttribute("key") || "";
+    const keyArr = key.match(/(.+)-(.+)$/) || [];
+    return { key, name: keyArr[1], type: keyArr[2] };
+}
+
+function createDownLoad(link) {
+    const a = document.createElement("a");
+    a.href = link;
+    a.download = "我的作品";
+    a.click();
+}
+
 function drawLineToContext(context, sx, sy, ex, ey) {
     context.beginPath();
     context.moveTo(sx, sy);
@@ -10,19 +32,19 @@ function drawLineToContext(context, sx, sy, ex, ey) {
     context.stroke();
 }
 
-function drawLineargradientLine(ctx, width, height, col, color) {
+function drawLineargradientLine(ctx, x, y, width, height, colorStop) {
     const lineargradient = ctx.createLinearGradient(0, 0, 0, height);
-    lineargradient.addColorStop(0, "#000");
-    lineargradient.addColorStop(0.5, color);
-    lineargradient.addColorStop(1, "#fff");
+    colorStop.forEach(arr => {
+        lineargradient.addColorStop(arr[0], arr[1]);
+    });
     ctx.fillStyle = lineargradient;
-    ctx.fillRect(col * width, 0, width * 2, height);
+    ctx.fillRect(x, y, width, height);
 }
 
-function newTwoDimensionalArray(x, y) {
+function newTwoDimensionalArray(row, col) {
     const arr = [];
-    for (let i = 0; i < x; i++) {
-        arr.push(new Array(y));
+    for (let i = 0; i < row; i++) {
+        arr.push(new Array(col));
     }
     return arr;
 }
@@ -54,32 +76,85 @@ function isLegalColor(color) {
 
 }
 
-function createDownLoad(link) {
-    const a = document.createElement("a");
-    a.href = link;
-    a.download = "我的作品";
-    a.click();
+function getRandomColor() {
+    return `rgb(${[0, 0, 0].map(it => Math.floor(Math.random() * 256)).join(",")})`;
 }
 
+function getRandomColorArr(row, col) {
+    const colors = newTwoDimensionalArray(row, col);
+    for (let i = 0; i < row; ++i) {
+        for (let j = 0; j < col; ++j) {
+            colors[i][j] = getRandomColor();
+        }
+    }
+    return colors;
+}
 
-// 工具对象
-const __TOOL = {};
-__TOOL.initTool = function ({ toolBarElement, paletteElement,
-    color, inUse, changeToolCallback }) {
+const __COLOR = {};
+__COLOR.initColor = function ({ color, paintBox }) {
+    this.colorSelectorContext = getElementByKey("color-selector-pick").getContext("2d");
+    const paintBoxElement = getElementByKey("paint-box-pick");
+    this.paintBoxContext = paintBoxElement.getContext("2d");
+    this.paintBoxGridSize = {
+        height: paintBoxElement.height / paintBox.length,
+        width: paintBoxElement.width / paintBox[0].length
+    }
 
-    this.toolBarElement = toolBarElement;
-    this.paletteElement = paletteElement;
-
-    this.colorFormatElement = this.paletteElement.getElementsByTagName("input")[0]
-    this.colorSelectorElement = this.paletteElement.getElementsByTagName("canvas")[0];
-    this.colorSelectorContext = this.colorSelectorElement.getContext("2d");
-
-
-    this.inUse = inUse;
-    this.displayColorSelector = false;
     this.updateCurrentColor(color);
-    this.drawLineargradientSelector(color);
+    this.drawSelector(color);
+    this.drawPaintBox(paintBox);
 
+    getElementByKey("color-format-input").onblur = (e) => {
+        const { value } = e.currentTarget;
+        this.updateCurrentColor(isLegalColor(value) ? value : this.color);
+    }
+}
+
+__COLOR.updateCurrentColor = function (color) {
+    this.color = color;
+    getElementByKey("current-color-pick").style.backgroundColor = color;
+    getElementByKey("color-format-input").value = color;
+}
+
+__COLOR.toggleColorSelectorDisplay = function () {
+    const selector = getElementByKey("color-selector-pick");
+    selector.className = selector.className == "hidden" ? "visible" : "hidden";
+}
+
+__COLOR.drawPaintBox = function (paintBox) {
+    const { paintBoxContext, paintBoxGridSize: { width, height } } = this;
+    paintBox.forEach((colorArr, row) => {
+        colorArr.forEach((color, col) => {
+            paintBoxContext.fillStyle = color;
+            paintBoxContext.fillRect(Math.floor(col * width), Math.floor(row * height), width, height);
+        })
+    })
+}
+
+__COLOR.drawSelector = function () {
+    const selector = getElementByKey("color-selector-pick");
+    const { width, height } = selector;
+    const colors = [
+        "#cf010b", "#eb7012", "#f19914", "#f7c71b",
+        "#fdf21c", "#cade1b", "#96c71e", "#65af1c",
+        "#019219", "#019678", "#0195a3", "#0197ca",
+        "#0198f1", "#007dd1", "#0162b3", "#004593",
+        "#000267", "#51005c", "#7b014a", "#a40037", ""
+    ];
+    const lineWidth = Math.floor(width / (colors.length));
+    const drawLine = drawLineargradientLine.bind({}, this.colorSelectorContext);
+    colors.forEach((color, idx) => {
+        color ? drawLine(idx * lineWidth, 0, lineWidth * 2, height, [[0, "#000"], [0.5, color], [1, "#fff"]])
+            : drawLine(idx * lineWidth, 0, lineWidth * 2, height, [[0.2, "#000"], [0.8, "#fff"]]);
+    });
+}
+
+const __TOOL = Object.create(__COLOR);
+__TOOL.initTool = function (args) {
+    this.initColor(args);
+    const { toolBarElement, color, inUse, changeToolCallback } = args;
+    this.toolBarElement = toolBarElement;
+    this.inUse = inUse;
     this.isDragToolBar = false;
     this.addToolBarListener(changeToolCallback);
 }
@@ -87,15 +162,17 @@ __TOOL.initTool = function ({ toolBarElement, paletteElement,
 __TOOL.addToolBarListener = function (changeToolCallback) {
 
     this.toolBarElement.onmousedown = (e) => {
-        this.isDragToolBar = true;
+        if (e.target == e.currentTarget) {
+            this.isDragToolBar = true;
+        }
     }
 
     this.toolBarElement.onmousemove = (e) => {
-        if (this.isDragToolBar && e.target == this.toolBarElement) {
-            const { movementX, movementY } = e;
-            const { left, top } = this.toolBarElement.style;
-            this.toolBarElement.style.left = parseInt(left || 0) + movementX + "px";
-            this.toolBarElement.style.top = parseInt(top || 0) + movementY + "px";
+        if (this.isDragToolBar && e.target == e.currentTarget) {
+            const { movementX, movementY, currentTarget } = e;
+            const { left, top } = currentTarget.style;
+            currentTarget.style.left = parseInt(left || 0) + movementX + "px";
+            currentTarget.style.top = parseInt(top || 0) + movementY + "px";
         }
     }
 
@@ -109,34 +186,32 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
     }
 
     this.toolBarElement.onclick = (e) => {
-        const { target } = e;
+        const keyObj = getElementKeyObj(e.target);
+        if (!keyObj.key) return;
 
-        const { type } = target.dataset;
-        if (!type) return;
-        const typeArr = type.split("-");
-
-        if (typeArr[1] == "select") {
-            this.changeInUse(target);
+        if (keyObj.type == "select") {
+            this.changeInUse(e.target);
         }
 
-        if (typeArr[0] == "color-selector") {
+        if (keyObj.name == "color-selector") {
             const imageData = this.colorSelectorContext.getImageData(e.offsetX, e.offsetY, 1, 1);
             if (imageData.data.length > 3) {
                 this.updateCurrentColor(`rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
             }
         }
 
-        if (typeArr[0] == "current-color") {
-            this.displayColorSelector = !this.displayColorSelector;
-            this.colorSelectorElement.className = this.displayColorSelector ? "visible" : "hidden";
+        if (keyObj.name == "paint-box"){
+            const imageData = this.paintBoxContext.getImageData(e.offsetX, e.offsetY, 1, 1);
+            if (imageData.data.length > 3) {
+                this.updateCurrentColor(`rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
+            }
         }
 
-        changeToolCallback(typeArr[0]);
-    }
+        if (keyObj.name == "current-color") {
+            this.toggleColorSelectorDisplay();
+        }
 
-    this.colorFormatElement.onblur = (e) => {
-        const { value } = e.currentTarget;
-        this.updateCurrentColor(isLegalColor(value) ? value : this.color);
+        changeToolCallback(keyObj.name);
     }
 }
 
@@ -146,39 +221,11 @@ __TOOL.changeInUse = function (element) {
     this.inUse.className = this.inUse.className + " use";
 }
 
-__TOOL.updateCurrentColor = function (color) {
-    this.color = color;
-    this.paletteElement.firstElementChild.style.backgroundColor = color;
-    this.colorFormatElement.value = color;
-}
-
-// TODO: refactor
-__TOOL.drawLineargradientSelector = function () {
-    const { width, height } = this.colorSelectorElement;
-    const colors = [
-        "#cf010b", "#eb7012", "#f19914", "#f7c71b",
-        "#fdf21c", "#cade1b", "#96c71e", "#65af1c",
-        "#019219", "#019678", "#0195a3", "#0197ca",
-        "#0198f1", "#007dd1", "#0162b3", "#004593",
-        "#000267", "#51005c", "#7b014a", "#a40037",
-    ];
-    const lineWidth = width / (colors.length + 1);
-    const drawLine = drawLineargradientLine.bind(this, this.colorSelectorContext, lineWidth, height);
-    colors.forEach((color, idx) => {
-        drawLine(idx, color);
-    });
-    const lineargradient = this.colorSelectorContext.createLinearGradient(0, 0, 0, height);
-    lineargradient.addColorStop(0.1, "#000");
-    lineargradient.addColorStop(0.9, "#fff");
-    this.colorSelectorContext.fillStyle = lineargradient;
-    this.colorSelectorContext.fillRect(colors.length * lineWidth, 0, lineWidth * 2, height);
-}
-
 
 // 画布对象
-const __CANVAS = Object.create(__TOOL);
+const __PIXEL = Object.create(__TOOL);
 
-__CANVAS.initCanvas = function (args) {
+__PIXEL.initPixel = function (args) {
     this.initTool({ ...args, changeToolCallback: this.changeToolCallback.bind(this) });
 
     const { canvasElement, gridElement, pasteBarElement, imageResolution, isGridDisplayed } = args;
@@ -211,12 +258,12 @@ __CANVAS.initCanvas = function (args) {
     this.inUse.click();
 }
 
-__CANVAS.getGridSize = function () {
+__PIXEL.getGridSize = function () {
     return Math.min(Math.floor(this.canvasElement.width / this.imageResolution.col),
         Math.floor(this.canvasElement.height / this.imageResolution.row));
 }
 
-__CANVAS.setImageResolution = function (imageResolution) {
+__PIXEL.setImageResolution = function (imageResolution) {
     this.imageResolution = imageResolution;
     this.pixelContext = newTwoDimensionalArray(imageResolution.row, imageResolution.col);
     this.gridSize = this.getGridSize();
@@ -232,7 +279,7 @@ __CANVAS.setImageResolution = function (imageResolution) {
     this.copySelectContext = this.copySelectElement.getContext("2d");
 }
 
-__CANVAS.drawGrid = function () {
+__PIXEL.drawGrid = function () {
     this.gridContext.fillStyle = "#000";
     this.gridContext.fillRect(0, 0, this.gridElement.width, this.gridElement.height);
 
@@ -247,17 +294,17 @@ __CANVAS.drawGrid = function () {
     }
 }
 
-__CANVAS.removeGrid = function () {
+__PIXEL.removeGrid = function () {
     this.gridContext.clearRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
 }
 
-__CANVAS.startCopy = function () {
+__PIXEL.startCopy = function () {
     this.pasteBarElement.className = 'visible';
     this.toolBarElement.className = 'hidden';
-    this.colorSelectorElement.className = 'hidden';
+    getElementByKey("color-selector-pick").className = 'hidden';
 }
 
-__CANVAS.closeCopy = function () {
+__PIXEL.closeCopy = function () {
     this.inUse.click();
     this.pasteBarElement.className = 'hidden';
     this.toolBarElement.className = 'visible';
@@ -265,8 +312,8 @@ __CANVAS.closeCopy = function () {
     this.isStartPaste = false;
 }
 
-__CANVAS.changeToolCallback = function (id) {
-    switch (id) {
+__PIXEL.changeToolCallback = function (name) {
+    switch (name) {
         case 'pen':
             this.canvasElement.style.cursor = "crosshair";
             break;
@@ -302,40 +349,40 @@ __CANVAS.changeToolCallback = function (id) {
     }
 }
 
-__CANVAS.isInCanvas = function (x, y) {
+__PIXEL.isInCanvas = function (x, y) {
     if (x < this.offsetX || x >= this.canvasWidth + this.offsetX || y < this.offsetY || y >= this.canvasHeight + this.offsetY) {
         return false;
     }
     return true;
 }
 
-__CANVAS.tranformCoordinateToCanvas = function (x, y) {
+__PIXEL.tranformCoordinateToCanvas = function (x, y) {
     var col = Math.floor((x - this.offsetX) / this.gridSize);
     var row = Math.floor((y - this.offsetY) / this.gridSize);
     return { row, col };
 }
 
-__CANVAS.setPixelContext = function ({ row, col }, color) {
+__PIXEL.setPixelContext = function ({ row, col }, color) {
     this.pixelContext[row][col] = color;
 }
 
-__CANVAS.getPixelContext = function ({ row, col }) {
+__PIXEL.getPixelContext = function ({ row, col }) {
     return this.pixelContext[row][col];
 }
 
-__CANVAS.usePen = function (pos, _color) {
+__PIXEL.usePen = function (pos, _color) {
     const color = _color || this.color;
     this.setPixelContext(pos, color);
     this.canvasContext.fillStyle = color;
     this.canvasContext.fillRect(this.offsetX + pos.col * this.gridSize, this.offsetY + pos.row * this.gridSize, this.gridSize, this.gridSize);
 }
 
-__CANVAS.useErase = function (pos) {
+__PIXEL.useErase = function (pos) {
     this.setPixelContext(pos, undefined);
     this.canvasContext.clearRect(this.offsetX + pos.col * this.gridSize, this.offsetY + pos.row * this.gridSize, this.gridSize, this.gridSize);
 }
 
-__CANVAS.useFill = function (pos) {
+__PIXEL.useFill = function (pos) {
     const willReplaceColor = this.getPixelContext(pos);
     if (willReplaceColor == this.color) return;
 
@@ -367,13 +414,13 @@ __CANVAS.useFill = function (pos) {
     return visit;
 }
 
-__CANVAS.clearCanvas = function () {
+__PIXEL.clearCanvas = function () {
     this.historyStack.push({ pixelContext: this.pixelContext, action: "clearCanvas" });
     this.pixelContext = newTwoDimensionalArray(this.imageResolution.row, this.imageResolution.col);
     this.canvasContext.clearRect(this.offsetX, this.offsetY, this.canvasWidth, this.canvasHeight);
 }
 
-__CANVAS.drawByPixelContext = function () {
+__PIXEL.drawByPixelContext = function () {
     this.pixelContext.forEach((rowColor, row) => {
         rowColor.forEach((color, col) => {
             this.canvasContext.fillStyle = color;
@@ -382,15 +429,14 @@ __CANVAS.drawByPixelContext = function () {
     });
 }
 
-__CANVAS.paint = function (action) {
+__PIXEL.paint = function (action) {
     const { x, y } = action;
     if (!this.isInCanvas(x, y)) return;
     const pos = this.tranformCoordinateToCanvas(x, y);
     const color = this.getPixelContext(pos);
-    const { type } = this.inUse.dataset;
-    const typeArr = type.split('-');
+    const keyObj = getElementKeyObj(this.inUse);
 
-    switch (typeArr[0]) {
+    switch (keyObj.name) {
         case "pen":
             if (this.color != color) {
                 this.usePen(pos);
@@ -422,7 +468,7 @@ __CANVAS.paint = function (action) {
     return true;
 }
 
-__CANVAS.onRedo = function () {
+__PIXEL.onRedo = function () {
     const { length } = this.undoStack;
     if (length == 0) return;
 
@@ -451,7 +497,7 @@ __CANVAS.onRedo = function () {
     }
 }
 
-__CANVAS.onUndo = function () {
+__PIXEL.onUndo = function () {
     const { length } = this.historyStack;
     if (length == 0) return;
 
@@ -483,7 +529,7 @@ __CANVAS.onUndo = function () {
     }
 }
 
-__CANVAS.usePaste = function (e) {
+__PIXEL.usePaste = function (e) {
     const { offsetX, offsetY } = e;
     const { sx, sy, ex, ey } = this.copyRect;
     if (!(sx && sy && ex && ey)) return;
@@ -514,16 +560,12 @@ __CANVAS.usePaste = function (e) {
     return fillPixelContent;
 }
 
-__CANVAS.toggleGridDisplay = function () {
+__PIXEL.toggleGridDisplay = function () {
+    this.isGridDisplayed ? this.drawGrid() : this.removeGrid();
     this.isGridDisplayed = !this.isGridDisplayed;
-    if (this.isGridDisplayed) {
-        this.drawGrid();
-    } else {
-        this.removeGrid();
-    }
 }
 
-__CANVAS.addMouseListener = function () {
+__PIXEL.addMouseListener = function () {
     this.canvasElement.onpointerdown = (e) => {
         this.mousedrag = true;
     };
@@ -550,7 +592,9 @@ __CANVAS.addMouseListener = function () {
 
     // 复制粘贴
     this.pasteBarElement.onclick = (e) => {
-        switch (e.target.dataset.type) {
+        const keyObj = getElementKeyObj(e.target);
+        if (!keyObj.key) return;
+        switch (keyObj.name) {
             case "paste-close-click":
                 this.closeCopy();
                 break;
@@ -608,11 +652,9 @@ function main() {
     const GRID = document.getElementById("grid");
     const TOOL_BAR = document.getElementById("tool-bar");
     const COLOR_SELECTOR = document.getElementById("color-selector");
-    const PEN = document.querySelector("#pen > .glass");
-    const PALETTE = document.getElementById("palette");
     const PASTE_BAR = document.getElementById("paste-bar");
 
-    const pixel = Object.create(__CANVAS);
+    const pixel = Object.create(__PIXEL);
     CANVAS.width = GRID.width = window.innerWidth;
     CANVAS.height = GRID.height = window.innerHeight;
 
@@ -622,14 +664,16 @@ function main() {
     COLOR_SELECTOR.style.top = toolBarSize.bottom - COLOR_SELECTOR.width + "px";
     COLOR_SELECTOR.style.left = toolBarSize.right + "px";
 
-    pixel.initCanvas({
+    setElementSize(getElementByKey("paint-box-pick"), toolBarSize.width * 0.8, toolBarSize.width * 0.5);
+    const paintBox = getRandomColorArr(3, 8);
+
+    pixel.initPixel({
         canvasElement: CANVAS,
         gridElement: GRID,
         toolBarElement: TOOL_BAR,
-        inUse: PEN,
-        color: "rgb(0,123,255)",
-        colorGrid: 5,
-        paletteElement: PALETTE,
+        inUse: getElementByKey("pen-select"),
+        color: paintBox[0][0],
+        paintBox,
         pasteBarElement: PASTE_BAR,
         isGridDisplayed: true,
         imageResolution: { row: 60, col: 100 }
@@ -640,16 +684,15 @@ document.body.onload = function () {
     main();
 }
 
-// 写文档，制定规则（节点捕获），改一下命名
 // 重构一下边界判断
-// 重构颜色取样
-// 重构复制粘贴(粘贴加个轮廓提示)
+// 颜色盘
+// 新增监听器类
 // 包装一个拖拽控件
+// 重构复制粘贴(粘贴加个轮廓提示)
 // 修改tool bar的拖拽、边界、缩小
 // 历史记录变成基于一个操作（路径）（增加历史记录面板）
 // 按钮防抖
 // 重构样式（指针样式）
-// 颜色盘
 // 镜像复制(TODO: undo、redo)
 // resize?? 兼容触摸屏？
 // 放大缩小

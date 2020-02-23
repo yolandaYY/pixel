@@ -14,7 +14,7 @@
     <canvas id="canvas">你的浏览器不支持 canvas</canvas>
     <div id="tool-bar">
         <div id="pen" class="tool" title="画笔">
-            <div class="glass" data-type="pen-select"></div>
+            <div class="glass" key="pen-select"></div>
             <svg t="1581521796967" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="3381">
                 <path
@@ -30,7 +30,7 @@
             </svg>
         </div>
         <div id="erase" class="tool" title="橡皮擦">
-            <div class="glass" data-type="erase-select"></div>
+            <div class="glass" key="erase-select"></div>
             <svg t="1581522424174" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="16247">
                 <path
@@ -42,7 +42,7 @@
             </svg>
         </div>
         <div id="fill" class="tool" title="填充">
-            <div class="glass" data-type="fill-select"></div>
+            <div class="glass" key="fill-select"></div>
             <svg t="1581522183756" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="8820">
                 <path
@@ -51,7 +51,7 @@
             </svg>
         </div>
         <div id="copy" class="tool" title="复制">
-            <div class="glass" data-type="copy-click"></div>
+            <div class="glass" key="copy-click"></div>
             <svg t="1581523117423" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="20830">
                 <path
@@ -66,7 +66,7 @@
             </svg>
         </div>
         <div id="undo" class="tool" title="撤回">
-            <div class="glass" data-type="undo-click"></div>
+            <div class="glass" key="undo-click"></div>
             <svg t="1581522451800" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="17035">
                 <path
@@ -75,7 +75,7 @@
             </svg>
         </div>
         <div id="redo" class="tool" title="前进">
-            <div class="glass" data-type="redo-click"></div>
+            <div class="glass" key="redo-click"></div>
             <svg t="1581522378567" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="15240">
                 <path
@@ -84,7 +84,7 @@
             </svg>
         </div>
         <div id="clear" class="tool" title="清空">
-            <div class="glass" data-type="clear-click"></div>
+            <div class="glass" key="clear-click"></div>
             <svg t="1581522478471" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="17854">
                 <path
@@ -93,7 +93,7 @@
             </svg>
         </div>
         <div id="color-picker" class="tool" title="取色">
-            <div class="glass" data-type="color-picker-select"></div>
+            <div class="glass" key="color-picker-select"></div>
             <svg t="1581522519546" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="18282">
                 <path
@@ -149,7 +149,7 @@
             </svg>
         </div>
         <div id="download-image" class="tool" title="下载图片">
-            <div class="glass" data-type="download-image-click"></div>
+            <div class="glass" key="download-image-click"></div>
             <svg t="1581522561463" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="19062">
                 <path
@@ -158,7 +158,7 @@
             </svg>
         </div>
         <div id="toggle-grid" class="tool" title="网格">
-            <div class="glass" data-type="toggle-grid-click"></div>
+            <div class="glass" key="toggle-grid-click"></div>
             <svg t="1581522600897" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="19859">
                 <path
@@ -167,17 +167,17 @@
             </svg>
         </div>
         <div id="palette">
-            <div id="current-color" data-type="current-color-pick" title="点击显示颜色选择器"></div>
-            <input id="color-format" type="text" data-type="color-format-input" title="输入颜色（支持rgb、hex格式）" />
-            <div id="color-grid" data-type="color-grid-pick"></div>
-            <canvas id="color-selector" class="hidden" data-type="color-selector-pick">你的浏览器不支持 canvas</canvas>
+            <div id="current-color" key="current-color-pick" title="点击显示颜色选择器"></div>
+            <input id="color-format" type="text" key="color-format-input" title="输入颜色（支持rgb、hex格式）" />
+            <canvas id="paint-box" key="paint-box-pick">你的浏览器不支持 </canvas>
+            <canvas id="color-selector" class="hidden" key="color-selector-pick">你的浏览器不支持 canvas</canvas>
         </div>
     </div>
     <div id="paste-bar" class="hidden">
         <canvas id="copy-select">你的浏览器不支持 canvas</canvas>
-        <span class="tool" id="paste-close" data-type="paste-close-click">X</span>
+        <span class="tool" id="paste-close" key="paste-close-click">X</span>
         <span class="tool" id="paste" title="点击粘贴（右键也可）">
-            <div class="glass" data-type="paste-click"></div>
+            <div class="glass" key="paste-click"></div>
             <svg t="1581522340578" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 p-id="14310">
                 <path
