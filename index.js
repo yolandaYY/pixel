@@ -99,10 +99,11 @@ __COLOR.initColor = function ({ color, paintBox }) {
         height: paintBoxElement.height / paintBox.length,
         width: paintBoxElement.width / paintBox[0].length
     }
+    this.selectedColorPos = { row: 0, col: 0 };
 
+    this.drawPaintBox(paintBox);
     this.updateCurrentColor(color);
     this.drawSelector(color);
-    this.drawPaintBox(paintBox);
 
     getElementByKey("color-format-input").onblur = (e) => {
         const { value } = e.currentTarget;
@@ -111,14 +112,33 @@ __COLOR.initColor = function ({ color, paintBox }) {
 }
 
 __COLOR.updateCurrentColor = function (color) {
+    const { paintBoxContext, paintBoxGridSize: { width, height }, selectedColorPos: { row, col } } = this;
     this.color = color;
     getElementByKey("current-color-pick").style.backgroundColor = color;
     getElementByKey("color-format-input").value = color;
+    paintBoxContext.fillStyle = color;
+    paintBoxContext.fillRect(Math.floor(col * width), Math.floor(row * height), width, height);
+    this.drawPaintBoxSelected();
 }
 
 __COLOR.toggleColorSelectorDisplay = function () {
     const selector = getElementByKey("color-selector-pick");
     selector.className = selector.className == "hidden" ? "visible" : "hidden";
+}
+
+__COLOR.drawPaintBoxSelected = function() {
+    const { paintBoxContext, paintBoxGridSize: { width, height }, selectedColorPos: { row, col } } = this;
+    paintBoxContext.strokeStyle ="#000";
+    paintBoxContext.fillText("📌", col * width, row * height + 16);
+}
+
+__COLOR.onClickPaintBox = function (x, y, color) {
+    const { paintBoxContext, paintBoxGridSize: { width, height }, selectedColorPos: { row, col } } = this;
+    paintBoxContext.fillStyle = this.color;
+    paintBoxContext.fillRect(Math.floor(col * width), Math.floor(row * height), width, height);
+    this.selectedColorPos = { row: Math.floor(y / height), col: Math.floor(x / width) };
+    this.drawPaintBoxSelected();
+    this.updateCurrentColor(color);
 }
 
 __COLOR.drawPaintBox = function (paintBox) {
@@ -141,11 +161,11 @@ __COLOR.drawSelector = function () {
         "#0198f1", "#007dd1", "#0162b3", "#004593",
         "#000267", "#51005c", "#7b014a", "#a40037", ""
     ];
-    const lineWidth = Math.floor(width / (colors.length));
+    const lineWidth = width / (colors.length);
     const drawLine = drawLineargradientLine.bind({}, this.colorSelectorContext);
     colors.forEach((color, idx) => {
-        color ? drawLine(idx * lineWidth, 0, lineWidth * 2, height, [[0, "#000"], [0.5, color], [1, "#fff"]])
-            : drawLine(idx * lineWidth, 0, lineWidth * 2, height, [[0.2, "#000"], [0.8, "#fff"]]);
+        drawLine(Math.floor(idx * lineWidth), 0, Math.floor(lineWidth * 2), height, color ? [[0, "#000"], [0.5, color], [1, "#fff"]]
+            : [[0.2, "#000"], [0.8, "#fff"]]);
     });
 }
 
@@ -200,10 +220,10 @@ __TOOL.addToolBarListener = function (changeToolCallback) {
             }
         }
 
-        if (keyObj.name == "paint-box"){
+        if (keyObj.name == "paint-box") {
             const imageData = this.paintBoxContext.getImageData(e.offsetX, e.offsetY, 1, 1);
             if (imageData.data.length > 3) {
-                this.updateCurrentColor(`rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
+                this.onClickPaintBox(e.offsetX, e.offsetY, `rgb(${imageData.data[0]},${imageData.data[1]}, ${imageData.data[2]})`);
             }
         }
 
@@ -593,12 +613,13 @@ __PIXEL.addMouseListener = function () {
     // 复制粘贴
     this.pasteBarElement.onclick = (e) => {
         const keyObj = getElementKeyObj(e.target);
+
         if (!keyObj.key) return;
         switch (keyObj.name) {
-            case "paste-close-click":
+            case "paste-close":
                 this.closeCopy();
                 break;
-            case "paste-click":
+            case "paste":
                 if (this.copyRect.ex) {
                     this.isStartPaste = true;
                     this.copySelectElement.style.cursor = "unset";
@@ -704,9 +725,9 @@ document.body.onload = function () {
 // 图标下添加小字
 // 实时本地存储
 // 文件导入（添加背景图）、导出（制定存储格式）
+// 添加加载动画(导引动画)
 // 预览
 // 添加新画布
 // 制作简单动画
 // 重写复制粘贴（勾勒轮廓）
 // 图层
-// 添加加载动画
